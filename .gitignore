@@ -1,0 +1,18 @@
+# Секреты и пользовательские конфиги
+config.php
+config.user.php
+config.*.php
+!config.example.php
+*.bak
+*.bak-*
+*.bak-fork
+*~
+
+# Runtime-кэш и логи
+var/
+*.log
+*.pid
+
+# Локальные артефакты
+.DS_Store
+*.swp
