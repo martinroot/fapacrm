@@ -1132,6 +1132,7 @@ $total_v2k    = ($total_visits > 0) ? ($total_visits / 2000.0 * 100.0) : 0.0;
 echo '<table>';
 echo '<tr>
   <th>Topic</th>
+  <th class="compact" title="Открыть сайт в новой вкладке">Site</th>
   <th>Отлив</th>
   <th>Вердикт</th>
   <th>Spend<br>сеткa</th>
@@ -1176,6 +1177,9 @@ foreach ($rows as $r) {
     : '';
 
   $geoBtn = '<a class="btn" target="_blank" href="https://'.h($r['topic']).'/cmd/menu.php?page=campaign_851694">GEO</a>';
+  $siteBtn = '<a class="btn" style="font-size:11px;padding:1px 6px;line-height:1.2;text-decoration:none"'
+    . ' target="_blank" rel="noopener noreferrer" href="https://'.h($r['topic']).'/"'
+    . ' title="Открыть https://'.h($r['topic']).'/ в новой вкладке">↗</a>';
   $blBtn  = '<a class="btn" target="_blank" href="https://'.h($r['topic']).'/cmd/menu.php?page=publishers">BL</a>';
   $predBtn = '<a class="btn" href="menu.php?page=ltv_predict&domain='.h($r['topic']).'" title="LTV разгон предикт">🚀 LTV</a>';
 
@@ -1215,6 +1219,7 @@ foreach ($rows as $r) {
 
   echo '<tr style="'.$rowStyle.'">';
   echo '<td class="name">'.h($r['topic']).$noteBadge.'</td>';
+  echo '<td class="center">'.$siteBtn.'</td>';
   echo '<td class="center">'.$stBadge.'</td>';
 
   /* Вердикт по деньгам за сегодня.
@@ -1284,6 +1289,7 @@ foreach ($rows as $r) {
 // TOTAL row
 echo '<tr style="font-weight:bold;background:#eef;">';
 echo '<td class="name">TOTAL</td>';
+echo '<td></td>';
 echo '<td></td><td></td>';
 echo '<td></td><td></td><td></td>';
 echo '<td>'.h(money_fmt($total_spend, 4)).'</td>';
