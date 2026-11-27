@@ -52,7 +52,8 @@ final class VibeMetricsToday implements ConnectorInterface
       'external_id' => 'vm:' . $site,
       'amount'      => (float)$sess,
       'meta' => [
-        'visits' => $sess, 'pageviews' => $pv,
+        // «Visits» в CRM = уникальные посетители, сессии отдельным полем.
+        'visits' => (int)($x['visitors'] ?? 0), 'sessions' => $sess, 'pageviews' => $pv,
         'avg_time' => (int)($x['avg_time_seconds'] ?? 0),
         'depth' => (int)($x['avg_scroll_depth'] ?? 0),
         'visitors' => (int)($x['visitors'] ?? 0),

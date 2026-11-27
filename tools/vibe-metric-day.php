@@ -58,7 +58,8 @@ foreach ($days as $day) {
     $dom = strtolower((string)($x['domain'] ?? ''));
     if (!isset($map[$dom])) continue; // pornfluxx.ru не в crm_domains — его учёт отдельно
     $meta = json_encode([
-      'visits' => (int)($x['sessions'] ?? 0), 'pageviews' => (int)($x['pageviews'] ?? 0),
+      'visits' => (int)($x['visitors'] ?? 0), 'sessions' => (int)($x['sessions'] ?? 0),
+      'pageviews' => (int)($x['pageviews'] ?? 0),
       'avg_time' => (int)($x['avg_time_seconds'] ?? 0), 'depth' => (int)($x['avg_scroll_depth'] ?? 0),
       'visitors' => (int)($x['visitors'] ?? 0),
       'human' => (int)($x['human_visitors'] ?? 0), 'bot' => (int)($x['bot_visitors'] ?? 0),

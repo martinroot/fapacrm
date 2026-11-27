@@ -405,7 +405,7 @@ foreach ($dom_db as $dom => $dbn) {
         continue;
     }
     $parts[] = "SELECT $q AS dom, ts, COALESCE(NULLIF(c4,'')+0, cost, 0) AS cpc
-                  FROM `$d`.clicks WHERE ts >= CURDATE()";
+                  FROM `$d`.clicks WHERE ts >= CURDATE() AND campaign_id <> '1'";
 }
 if ($parts) {
     $res = @$db->query("SELECT dom,
@@ -533,6 +533,7 @@ foreach ($met_rows as $r) {
   $metrika_by_domain[$did] = [
     'visits'=>$visits,'pageviews'=>$pageviews,'avg_time'=>$avgTime,'depth'=>$depth,
     'human'=>(float)($meta['human'] ?? 0),
+    'sessions'=>(float)($meta['sessions'] ?? $visits),
   ];
 }
 
@@ -850,7 +851,7 @@ foreach ($campaigns as $c) {
     'did'=>$did,'topic'=>(string)$c['domain_name'],
     'spend_net'=>(string)$c['network_code'],'rev_net'=>$rev_net,'campaign_id'=>$camp,
     'spend'=>$spend,'clicks'=>$clicks,'rev'=>$rev,'profit'=>$profit,'roi'=>$roi,
-    'spv'=>$spv,'rvv'=>$rvv,'visits'=>$visits,'pageviews'=>$pageviews,'avg_time'=>$avgTime,'depth'=>$depth,'human'=>(float)($m['human'] ?? 0),
+    'spv'=>$spv,'rvv'=>$rvv,'visits'=>$visits,'pageviews'=>$pageviews,'avg_time'=>$avgTime,'depth'=>$depth,'human'=>(float)($m['human'] ?? 0),'sessions'=>(float)($m['sessions'] ?? $visits),
     'kc'=>$kc,'v2k'=>$v2k,
     'missing_cost'=>!$jf['has_cost'],'missing_rev'=>!$jf['has_rev'],'missing_metric'=>!$jf['has_metric'],
     'no_cost_data'=>($jf['has_cost'] && $spend<=0.0),'no_rev_data'=>($jf['has_rev'] && $rev<=0.0),'no_met_data'=>($jf['has_metric'] && $visits<=0.0),
@@ -888,7 +889,7 @@ foreach ($cost_by as $key => $spend) {
     'did'=>$did,'topic'=>$dom_map[$did] ?? ('domain#'.$did),
     'spend_net'=>$cost_connector_by[$did.'|'.$ext] ?? '—','rev_net'=>$rev_net,'campaign_id'=>$ext,
     'spend'=>(float)$spend,'clicks'=>$clicks,'rev'=>$rev,'profit'=>$profit,'roi'=>$roi,
-    'spv'=>$spv,'rvv'=>$rvv,'visits'=>$visits,'pageviews'=>$pageviews,'avg_time'=>$avgTime,'depth'=>$depth,'human'=>(float)($m['human'] ?? 0),
+    'spv'=>$spv,'rvv'=>$rvv,'visits'=>$visits,'pageviews'=>$pageviews,'avg_time'=>$avgTime,'depth'=>$depth,'human'=>(float)($m['human'] ?? 0),'sessions'=>(float)($m['sessions'] ?? $visits),
     'kc'=>$kc,'v2k'=>$v2k,
     'missing_cost'=>!$jf['has_cost'],'missing_rev'=>!$jf['has_rev'],'missing_metric'=>!$jf['has_metric'],
     'no_cost_data'=>($jf['has_cost'] && (float)$spend<=0.0),'no_rev_data'=>($jf['has_rev'] && $rev<=0.0),'no_met_data'=>($jf['has_metric'] && $visits<=0.0),
@@ -921,7 +922,7 @@ foreach ($domains as $d) {
     'spend_net'=>'—','rev_net'=>$rev_net,'campaign_id'=>'—',
     'spend'=>0.0,'clicks'=>0.0,'rev'=>$rev,'profit'=>$rev,'roi'=>0.0,
     'spv'=>0.0,'rvv'=>($visits>0?($rev/$visits):0.0),
-    'visits'=>$visits,'pageviews'=>$pageviews,'avg_time'=>$avgTime,'depth'=>$depth,'human'=>(float)($m['human'] ?? 0),
+    'visits'=>$visits,'pageviews'=>$pageviews,'avg_time'=>$avgTime,'depth'=>$depth,'human'=>(float)($m['human'] ?? 0),'sessions'=>(float)($m['sessions'] ?? $visits),
     'kc'=>0.0,'v2k'=>($visits>0?($visits/2000.0*100.0):0.0),
     'missing_cost'=>!$jf['has_cost'],'missing_rev'=>!$jf['has_rev'],'missing_metric'=>!$jf['has_metric'],
     'no_cost_data'=>($jf['has_cost']),'no_rev_data'=>($jf['has_rev'] && $rev<=0.0),'no_met_data'=>($jf['has_metric'] && $visits<=0.0),
@@ -1154,7 +1155,7 @@ echo '<tr>
   <th>ROI&nbsp;%</th>
   <th class="compact" title="Spend / visits (×1000)">Sp/V</th>
   <th class="compact" title="Revenue / visits (×1000)">Rv/V</th>
-  <th>Visits</th>
+  <th title="Уникальные посетители; сессии — в подсказке ячейки">Visitors</th>
   <th class="compact" title="VibeMetrics: human_visitors за день">VM&nbsp;human</th>
   <th>Pageviews</th>
   <th>Avg&nbsp;time,<br>s</th>
@@ -1283,7 +1284,7 @@ foreach ($rows as $r) {
   echo '<td><b>'.h(roi_fmt($r['roi'])).'</b></td>';
   echo '<td class="compact"><b>'.h(money_fmt($r['spv']*1000, 4)).'</b></td>';
   echo '<td class="compact"><b>'.h(money_fmt($r['rvv']*1000, 4)).'</b></td>';
-  echo '<td>'.h(money_fmt($r['visits'], 0)).'</td>';
+  echo '<td title="сессии: '.h(money_fmt((float)($r['sessions'] ?? 0), 0)).'">'.h(money_fmt($r['visits'], 0)).'</td>';
   echo '<td class="compact" title="VibeMetrics human visitors">'.h(money_fmt((float)($r['human'] ?? 0), 0)).'</td>';
   echo '<td>'.h(money_fmt($r['pageviews'], 0)).'</td>';
   echo '<td>'.h(money_fmt($r['avg_time'], 1)).'</td>';
