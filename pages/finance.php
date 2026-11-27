@@ -454,7 +454,9 @@ $cost_connector_by = [];
 
 foreach ($cost_raw as $r) {
   $did = (int)$r['domain_id'];
-  $ext = (string)$r['external_id'];
+  // KadamCostV1 пишет external_id='kadam:<campaign_id>' — старая логика ждёт
+  // голый ID; без нормализации домен дублируется в таблице (секция A+B).
+  $ext = preg_replace('/^kadam:/', '', (string)$r['external_id']);
   $amt = (float)$r['amount'];
   $k = $did.'|'.$ext;
 
@@ -496,8 +498,8 @@ foreach ($rev_by_domain_net as $did => $m) { arsort($m); $rev_main_net[$did] = (
 
 /* ---------------- METRIKA daily ---------------- */
 $metrika_by_domain = [];
-/* Источник визитов — СВОЯ метрика (own_metrika_today), Яндекс остаётся
-   запасным. Берём последний тик за день, а не строку crm_finance_daily:
+/* Источник визитов — СВОЯ метрика (own_metrika_today), Яндекс и VibeMetrics
+   как запасные. Берём последний тик за день, а не строку crm_finance_daily:
    раннер metric в дневную таблицу не пишет вовсе (её должен был собирать
    /root/metric-day.php, которого на машине нет), поэтому колонка визитов
    пустовала независимо от источника. */
@@ -507,14 +509,14 @@ $met_rows = db_all($db, "
   JOIN (
     SELECT domain_id, MAX(ts) AS ts
     FROM crm_finance_ticks
-    WHERE d=? AND kind='metric' AND connector IN ('own_metrika_today','yandex_metrika_today')
+    WHERE d=? AND kind='metric' AND connector IN ('own_metrika_today','yandex_metrika_today','vibemetrics_today')
     GROUP BY domain_id
   ) last ON last.domain_id = t.domain_id AND last.ts = t.ts
   WHERE t.d=? AND t.kind='metric'
-    AND t.connector IN ('own_metrika_today','yandex_metrika_today')
+    AND t.connector IN ('own_metrika_today','yandex_metrika_today','vibemetrics_today')
     AND t.domain_id IN (SELECT id FROM crm_domains WHERE status='live')
     ".($domain_id>0 ? "AND t.domain_id=".(int)$domain_id : "")."
-  ORDER BY FIELD(t.connector,'own_metrika_today','yandex_metrika_today')
+  ORDER BY FIELD(t.connector,'own_metrika_today','yandex_metrika_today','vibemetrics_today')
 ", [$day, $day]);
 
 foreach ($met_rows as $r) {
@@ -528,7 +530,10 @@ foreach ($met_rows as $r) {
   $pageviews = (float)($meta['pageviews'] ?? 0);
   $avgTime   = (float)($meta['avg_time']  ?? 0);
   $depth     = (float)($meta['depth']     ?? (($visits > 0) ? ($pageviews / $visits) : 0));
-  $metrika_by_domain[$did] = ['visits'=>$visits,'pageviews'=>$pageviews,'avg_time'=>$avgTime,'depth'=>$depth];
+  $metrika_by_domain[$did] = [
+    'visits'=>$visits,'pageviews'=>$pageviews,'avg_time'=>$avgTime,'depth'=>$depth,
+    'human'=>(float)($meta['human'] ?? 0),
+  ];
 }
 
 /* ---------------- job flags ---------------- */
@@ -845,7 +850,7 @@ foreach ($campaigns as $c) {
     'did'=>$did,'topic'=>(string)$c['domain_name'],
     'spend_net'=>(string)$c['network_code'],'rev_net'=>$rev_net,'campaign_id'=>$camp,
     'spend'=>$spend,'clicks'=>$clicks,'rev'=>$rev,'profit'=>$profit,'roi'=>$roi,
-    'spv'=>$spv,'rvv'=>$rvv,'visits'=>$visits,'pageviews'=>$pageviews,'avg_time'=>$avgTime,'depth'=>$depth,
+    'spv'=>$spv,'rvv'=>$rvv,'visits'=>$visits,'pageviews'=>$pageviews,'avg_time'=>$avgTime,'depth'=>$depth,'human'=>(float)($m['human'] ?? 0),
     'kc'=>$kc,'v2k'=>$v2k,
     'missing_cost'=>!$jf['has_cost'],'missing_rev'=>!$jf['has_rev'],'missing_metric'=>!$jf['has_metric'],
     'no_cost_data'=>($jf['has_cost'] && $spend<=0.0),'no_rev_data'=>($jf['has_rev'] && $rev<=0.0),'no_met_data'=>($jf['has_metric'] && $visits<=0.0),
@@ -883,7 +888,7 @@ foreach ($cost_by as $key => $spend) {
     'did'=>$did,'topic'=>$dom_map[$did] ?? ('domain#'.$did),
     'spend_net'=>$cost_connector_by[$did.'|'.$ext] ?? '—','rev_net'=>$rev_net,'campaign_id'=>$ext,
     'spend'=>(float)$spend,'clicks'=>$clicks,'rev'=>$rev,'profit'=>$profit,'roi'=>$roi,
-    'spv'=>$spv,'rvv'=>$rvv,'visits'=>$visits,'pageviews'=>$pageviews,'avg_time'=>$avgTime,'depth'=>$depth,
+    'spv'=>$spv,'rvv'=>$rvv,'visits'=>$visits,'pageviews'=>$pageviews,'avg_time'=>$avgTime,'depth'=>$depth,'human'=>(float)($m['human'] ?? 0),
     'kc'=>$kc,'v2k'=>$v2k,
     'missing_cost'=>!$jf['has_cost'],'missing_rev'=>!$jf['has_rev'],'missing_metric'=>!$jf['has_metric'],
     'no_cost_data'=>($jf['has_cost'] && (float)$spend<=0.0),'no_rev_data'=>($jf['has_rev'] && $rev<=0.0),'no_met_data'=>($jf['has_metric'] && $visits<=0.0),
@@ -916,7 +921,7 @@ foreach ($domains as $d) {
     'spend_net'=>'—','rev_net'=>$rev_net,'campaign_id'=>'—',
     'spend'=>0.0,'clicks'=>0.0,'rev'=>$rev,'profit'=>$rev,'roi'=>0.0,
     'spv'=>0.0,'rvv'=>($visits>0?($rev/$visits):0.0),
-    'visits'=>$visits,'pageviews'=>$pageviews,'avg_time'=>$avgTime,'depth'=>$depth,
+    'visits'=>$visits,'pageviews'=>$pageviews,'avg_time'=>$avgTime,'depth'=>$depth,'human'=>(float)($m['human'] ?? 0),
     'kc'=>0.0,'v2k'=>($visits>0?($visits/2000.0*100.0):0.0),
     'missing_cost'=>!$jf['has_cost'],'missing_rev'=>!$jf['has_rev'],'missing_metric'=>!$jf['has_metric'],
     'no_cost_data'=>($jf['has_cost']),'no_rev_data'=>($jf['has_rev'] && $rev<=0.0),'no_met_data'=>($jf['has_metric'] && $visits<=0.0),
@@ -1108,6 +1113,7 @@ $total_spend   = 0.0;
 $total_clicks  = 0.0;
 $total_rev     = 0.0;
 $total_visits  = 0.0;
+$total_human   = 0.0;
 $total_pv      = 0.0;
 $total_time_w  = 0.0;
 
@@ -1116,6 +1122,7 @@ foreach ($rows as $r) {
   $total_clicks += (float)$r['clicks'];
   $total_rev    += (float)$r['rev'];
   $total_visits += (float)$r['visits'];
+  $total_human  += (float)($r['human'] ?? 0);
   $total_pv     += (float)$r['pageviews'];
   $total_time_w += (float)$r['avg_time'] * (float)$r['visits'];
 }
@@ -1148,6 +1155,7 @@ echo '<tr>
   <th class="compact" title="Spend / visits (×1000)">Sp/V</th>
   <th class="compact" title="Revenue / visits (×1000)">Rv/V</th>
   <th>Visits</th>
+  <th class="compact" title="VibeMetrics: human_visitors за день">VM&nbsp;human</th>
   <th>Pageviews</th>
   <th>Avg&nbsp;time,<br>s</th>
   <th>Depth</th>
@@ -1276,6 +1284,7 @@ foreach ($rows as $r) {
   echo '<td class="compact"><b>'.h(money_fmt($r['spv']*1000, 4)).'</b></td>';
   echo '<td class="compact"><b>'.h(money_fmt($r['rvv']*1000, 4)).'</b></td>';
   echo '<td>'.h(money_fmt($r['visits'], 0)).'</td>';
+  echo '<td class="compact" title="VibeMetrics human visitors">'.h(money_fmt((float)($r['human'] ?? 0), 0)).'</td>';
   echo '<td>'.h(money_fmt($r['pageviews'], 0)).'</td>';
   echo '<td>'.h(money_fmt($r['avg_time'], 1)).'</td>';
   echo '<td>'.h(money_fmt($r['depth'], 2)).'</td>';
@@ -1314,6 +1323,7 @@ echo '<td>'.h(roi_fmt($total_roi)).'</td>';
 echo '<td class="compact">'.h(money_fmt($total_spv*1000, 4)).'</td>';
 echo '<td class="compact">'.h(money_fmt($total_rvv*1000, 4)).'</td>';
 echo '<td>'.h(money_fmt($total_visits, 0)).'</td>';
+echo '<td class="compact">'.h(money_fmt($total_human, 0)).'</td>';
 echo '<td>'.h(money_fmt($total_pv, 0)).'</td>';
 echo '<td>'.h(money_fmt($total_avg_t, 1)).'</td>';
 echo '<td>'.h(money_fmt($total_depth, 2)).'</td>';
