@@ -24,8 +24,11 @@ final class VibeMetricsToday implements ConnectorInterface
       throw new RuntimeException('VibeMetricsToday: no api_key');
 
     $date = gmdate('Y-m-d'); // VibeMetrics day cut assumed UTC
+    // ВАЖНО: API трактует `to` как исключительную границу, поэтому
+    // from=day&to=day возвращает пустоту. Берём to = day + 1 сутки.
+    $to   = gmdate('Y-m-d', strtotime($date . ' +1 day'));
     $url = 'https://vibemetrics.click/api/agent/stats?' . http_build_query([
-      'domains' => $site, 'from' => $date, 'to' => $date,
+      'domains' => $site, 'from' => $date, 'to' => $to,
     ]);
     $ch = curl_init($url);
     curl_setopt_array($ch, [
